@@ -1,0 +1,33 @@
+name: One job
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  job:
+    name: One job on a Runner Controller runner
+    runs-on: [self-hosted, ubuntu-24.04]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Say where the job runs
+        run: |
+          echo "runner: $RUNNER_NAME"
+          echo "user: $(whoami)"
+          echo "architecture: $(uname -m)"
+          . /etc/os-release && echo "system: $PRETTY_NAME"
+      - name: Check what the container gives a job
+        run: |
+          set -eu
+          # A job has passwordless sudo, as on GitHub's own runners.
+          sudo -n true
+          # No Docker socket is handed in.
+          test ! -e /var/run/docker.sock
+          # The tool caches are in the volume, and the job may write there.
+          touch "$RUNNER_TOOL_CACHE/.written-by-a-job" || { mkdir -p "$RUNNER_TOOL_CACHE" && touch "$RUNNER_TOOL_CACHE/.written-by-a-job"; }
+          # tar unpacks, which it does not under emulation on Ubuntu 26.04.
+          tar czf /tmp/readme.tar.gz README.md && mkdir /tmp/unpacked && tar xzf /tmp/readme.tar.gz -C /tmp/unpacked
+          echo "All as expected."
